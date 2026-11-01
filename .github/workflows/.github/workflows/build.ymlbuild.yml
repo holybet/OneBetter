@@ -1,0 +1,30 @@
+name: Compilar APK OneBetter
+on: workflow_dispatch
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -o OneBetter-APK.zip -d app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Compilar
+        working-directory: app
+        run: |
+          npm install
+          node scripts/make-icon.mjs
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#0b2530' --iconBackgroundColorDark '#0b2530'
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneBetter-APK
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
