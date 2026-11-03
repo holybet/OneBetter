@@ -1,0 +1,72 @@
+name: Compilar APK OneBetter
+
+# Compila sozinho quando envias o OneBetter-APK.zip (ou os ficheiros soltos) e também ao carregar em "Run workflow".
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'OneBetter-APK.zip'
+      - 'www/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'capacitor.config.json'
+      - 'config.js'
+      - 'google-services.json'
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar projeto (aceita o zip ou os ficheiros soltos)
+        run: |
+          mkdir -p app
+          if [ -f OneBetter-APK.zip ]; then
+            unzip -o OneBetter-APK.zip -d app
+          else
+            tar --exclude=./app --exclude=./.git -cf - . | tar -xf - -C app
+          fi
+          if [ -f config.js ]; then cp config.js app/www/config.js; fi
+          if [ -f google-services.json ]; then cp google-services.json app/google-services.json; fi
+          test -f app/scripts/build.sh
+          ls -la app
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Aceitar licenças do Android SDK
+        run: yes | "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Compilar
+        run: bash app/scripts/build.sh
+
+      - name: Publicar o APK na página Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/android/app/build/outputs/apk/debug/app-debug.apk OneBetter.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest OneBetter.apk \
+            --title "OneBetter (última compilação)" \
+            --notes "APK de debug, instalável diretamente. Compilado em $(date -u '+%F %H:%M') UTC." \
+            --target "$GITHUB_SHA"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneBetter-APK
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
