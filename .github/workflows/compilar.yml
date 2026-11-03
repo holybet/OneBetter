@@ -1,11 +1,10 @@
 name: Compilar APK OneBetter
 
-# Compila sozinho quando envias o OneBetter-APK.zip (ou os ficheiros soltos) e também ao carregar em "Run workflow".
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'OneBetter-APK.zip'
+      - '*.zip'
       - 'www/**'
       - 'scripts/**'
       - 'package.json'
@@ -30,8 +29,10 @@ jobs:
       - name: Preparar projeto (aceita o zip ou os ficheiros soltos)
         run: |
           mkdir -p app
-          if [ -f OneBetter-APK.zip ]; then
-            unzip -o OneBetter-APK.zip -d app
+          ZIP=$(ls *.zip 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "$ZIP" ]; then
+            echo "A usar o zip: $ZIP"
+            unzip -o "$ZIP" -d app
           else
             tar --exclude=./app --exclude=./.git -cf - . | tar -xf - -C app
           fi
