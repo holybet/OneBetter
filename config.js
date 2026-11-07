@@ -9,6 +9,5 @@ window.ONEBETTER = {
   },
   requireLogin: true,
   tmdbKey: "",
-  aiUrl: "",
-  aiToken: ""
+  aiUrl: "https://onebetter-ia.leonildebernabe.workers.dev"
 };
